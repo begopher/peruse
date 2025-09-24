@@ -246,6 +246,52 @@ func TestWord(t *testing.T) {
 	}
 }
 
+
+
+func TestWords(t *testing.T) {
+	table := []struct {
+		content string
+		first   string
+		second  string
+		remain   string
+		col int
+		line int 
+	}{
+		//{content: "", first: "", second: "", remain: "", col:1, line:1},
+		//{content: "A", first: "", second: "", remain: "A", col:1, line:1},		
+		{content: "A1:B-2", first: "A1", second: "B-2", remain: "", col:7, line:1},
+		{content: "A1:B-2 ", first: "A1", second: "B-2", remain: " ", col:7, line:1},
+		{content: "A1:B2)", first: "A1", second: "B2", remain: ")", col:6, line:1},
+		{content: `A1:B2
+`, first: "A1", second: "B2", remain: "\n", col:6, line:1},
+		
+		{content: "lisp-first:lisp-last", first: "lisp-first", second: "lisp-last", remain: "", col:21, line:1},
+	}
+	
+	for _, data := range table {
+		buffer := peruse.Script("", data.content)
+		first, second := buffer.EatWords()
+		if first != data.first {
+			t.Errorf("Buffer does not eat words correctly, expected first is (%s) got (%s)", data.first, first)
+		}
+		if second != data.second {
+			t.Errorf("Buffer does not eat words correctly, expected second is (%s) got (%s)", data.second, second)
+		}
+		expected := data.remain
+		got := buffer.Remain()
+		if got != expected {
+			t.Errorf("Buffer does not eat words correctly, remain: got(%s) expected (%s)", got, expected)
+		}
+
+		if expected, got := data.col, buffer.Column(); expected != got {
+			t.Errorf("Buffer does not eat word correctly, column: got(%d) expected (%d)", got, expected)
+		}
+		if expected, got := data.line, buffer.Line(); expected != got {
+			t.Errorf("Buffer does not eat word correctly, line: got(%d) expected (%d)", got, expected)
+		}
+	}
+}
+
 func TestKeyword(t *testing.T) {
 	table := []struct {
 		content string

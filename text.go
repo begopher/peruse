@@ -14,10 +14,13 @@ type Text interface {
 	Remain() string
 	BeginWith(string) bool
 	Eat(string) bool
-	EatSymbol(string) bool 
+	//EatSymbol(string) bool
+	EatFunctionName(string) bool
 	EatSpaces()
 	EatString() (string, bool)
 	EatWord() string
+	EatWords() (string, string)
+	IsWord(string) bool
 	EatKeyword() string
 	EatInteger() string
 	EatFloat() string

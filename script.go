@@ -6,6 +6,7 @@ package peruse
 
 import(
 	"unicode"
+	"strings"
 	"github.com/begopher/peruse/internal/numeric"
 	"github.com/begopher/peruse/internal/numeric/ints"
 	"github.com/begopher/peruse/internal/numeric/floats"	
@@ -15,7 +16,7 @@ var integer = numeric.Numbers(ints.Signed(), ints.Unsigned())
 var float = numeric.Numbers(floats.Signed(), floats.Unsigned())
 
 func Script(origin, content string) Text {
-	return &text{
+	return &script{
 		origin: origin,
 		integer: integer,
 		float: float,
@@ -27,7 +28,7 @@ func Script(origin, content string) Text {
 	}
 }
 
-type text struct {
+type script struct {
 	origin string
 	integer numeric.Number
 	float numeric.Number
@@ -38,122 +39,122 @@ type text struct {
 	content []rune
 }
 
-func (t *text) Origin() string {
-	return t.origin
+func (s *script) Origin() string {
+	return s.origin
 }
 
-func (t *text) Column() int {
-	return t.column
+func (s *script) Column() int {
+	return s.column
 }
 
-func (t *text) Line() int {
-	return t.line
+func (s *script) Line() int {
+	return s.line
 }
 
-func (t *text) Location() Location{
-	return NewLocation(t.origin, t.line, t.column)	
+func (s *script) Location() Location{
+	return NewLocation(s.origin, s.line, s.column)	
 }
 
-func (t *text) Length() int {
-	return len(t.content)
+func (s *script) Length() int {
+	return len(s.content)
 }
 
-func (t *text) Empty() bool {
-	return len(t.content) == 0
+func (s *script) Empty() bool {
+	return len(s.content) == 0
 }
 
 
-func (t *text) Remain() string {
-	return string(t.content)
+func (s *script) Remain() string {
+	return string(s.content)
 }
 
-func (t *text) EatSpaces() {
-	for _, r := range t.content {
+func (s *script) EatSpaces() {
+	for _, r := range s.content {
 		if !unicode.IsSpace(r) {
 			break
 		}
 		if '\n' == r {
-			t.line++
-			t.column = t.columnReset
-			t.content = t.content[1:]
+			s.line++
+			s.column = s.columnReset
+			s.content = s.content[1:]
 			continue
 		}
 		if ' ' == r || '\t' == r {
-			t.column++
-			t.content = t.content[1:]		
+			s.column++
+			s.content = s.content[1:]		
 			continue
 		}
-		t.content = t.content[1:]
+		s.content = s.content[1:]
 		continue
 	}	
 }
 
-func (t *text) BeginWith(prefix string) bool {
+func (s *script) BeginWith(prefix string) bool {
 	if prefix == "" {
 		return false
 	}
 	sub := []rune(prefix)
-	if len(sub) > len(t.content) {
+	if len(sub) > len(s.content) {
 		return false
 	}
-	return string(t.content[:len(sub)]) == prefix
+	return string(s.content[:len(sub)]) == prefix
 }
 
 
-func (t *text) Eat(prefix string) bool {
-	if !t.BeginWith(prefix) {
+func (s *script) Eat(prefix string) bool {
+	if !s.BeginWith(prefix) {
 		return false
 	}
-	column, line := t.column, t.line
+	column, line := s.column, s.line
 	for _, r := range prefix {
 		if r == '\n' {
 			line++
-			column = t.columnReset
+			column = s.columnReset
 			continue
 		}
 		column++
 	}
 	sub := []rune(prefix)
-	t.content = t.content[len(sub):]
-	t.column = column
-	t.line = line
+	s.content = s.content[len(sub):]
+	s.column = column
+	s.line = line
 	return true	
 }
 
-func (t *text) EatSymbol(symbol string) bool {
-	if t.Eat("("+symbol+" ") {
+func (s *script) EatFunctionName(name string) bool {
+	if s.Eat("("+name+" ") {
 		return true
 	}
-	if t.Eat("("+symbol+"\n") {
+	if s.Eat("("+name+"\n") {
 		return true
 	}
-	if t.BeginWith("("+symbol+")") && t.Eat("("+symbol) {
+	if s.BeginWith("("+name+")") && s.Eat("("+name) {
 		return true
 	}
-	if len("("+symbol) == t.Length() && t.Eat("("+symbol) {
+	if len("("+name) == s.Length() && s.Eat("("+name) {
 		return true
 	}
 	return false
 }
 
-func (t *text) EatString() (string, bool) {
-	if t.Length() == 0 {
+func (s *script) EatString() (string, bool) {
+	if s.Length() == 0 {
 		return "", false
 	}
-	if t.content[0] != '"' {
+	if s.content[0] != '"' {
 		return "", false
 	}
 	//line := s.lineReset
 	line := 0
 	col, offset := 2, 2	// for first(") and last(")
-	buffer := t.content[1:]
+	buffer := s.content[1:]
 	closed := false
 	for i := 0; i<len(buffer); i++ {
 		r := buffer[i]
 		if r == '\n' {
 			offset++
 			line++
-			col = t.columnReset			
+			col = s.columnReset			
 			continue
 		}
 		if r == '\\' && i < len(buffer) && buffer[i+1] == '"' {
@@ -175,26 +176,26 @@ func (t *text) EatString() (string, bool) {
 	if !closed {
 		return "", false
 	}
-	result := t.content[1:offset-1]
-	t.content = t.content[offset:]	
+	result := s.content[1:offset-1]
+	s.content = s.content[offset:]	
 	if line == 0 {		
-		t.column += col
+		s.column += col
 	} else {
-		t.line += line
-		t.column = col
+		s.line += line
+		s.column = col
 	}
 	return string(result), true
 }
 
-func (t *text) EatWord() string {
-	if len(t.content) == 0 {
+func (s *script) EatWord() string {
+	if len(s.content) == 0 {
 		return ""
 	}
-	if !unicode.IsLetter(t.content[0]) {
+	if !unicode.IsLetter(s.content[0]) {
 		return ""
 	}
 	offset := 0
-	for _, r := range t.content {
+	for _, r := range s.content {
 		if r == ' ' || r == ')' || r =='\n' {
 			break
 		}
@@ -203,24 +204,84 @@ func (t *text) EatWord() string {
 		}					
 		offset++
 	}
-	t.column += offset
-	result := t.content[:offset]
-	t.content = t.content[offset:]
+	s.column += offset
+	result := s.content[:offset]
+	s.content = s.content[offset:]
 	return string(result)
 }
 
-func (t *text) EatKeyword() string {
-	if len(t.content) < 2 {
+func (s *script) EatWords() (string, string) {
+	if len(s.content) == 0 {
+		return "", ""
+	}
+	if !unicode.IsLetter(s.content[0]) {
+		return "", ""
+	}
+	offset := 0
+	colons := 0
+	for _, r := range s.content {
+		if r == ' ' || r == ')' || r =='\n' {
+			break
+		}
+		if !unicode.IsLetter(r) &&
+			!unicode.IsDigit(r) &&
+			r != ':' &&
+			r != '-' {
+			return "", ""
+		}
+		if r == ':' {
+			colons++
+		}	
+		offset++
+	}
+	result := s.content[:offset]
+	words := strings.Split(string(result), ":")
+	if len(words) != 2 {
+		return "", ""
+	}
+	first  := words[0]
+	second := words[1]
+	if !s.IsWord(first) || !s.IsWord(second) {
+		//if len(letters) == 0 || unicode.IsDigit(letters[0]) {
+		return "", ""
+	}
+	s.column += offset
+	s.content = s.content[offset:]
+	return words[0], words[1]
+}
+
+func (s *script) IsWord(value string) bool {
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return false
+	}	
+	for _,  r := range runes {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
+			return false
+		}
+	}
+	if !unicode.IsLetter(runes[0]) {
+		return false
+	}
+	last := runes[len(runes)-1]
+	if  last == '-' {
+		return false
+	}
+	return true	
+}
+
+func (s *script) EatKeyword() string {
+	if len(s.content) < 2 {
 		return ""
 	}
-	if t.content[0] != ':' {
+	if s.content[0] != ':' {
 		return ""
 	}
-	if !unicode.IsLetter(t.content[1]) {
+	if !unicode.IsLetter(s.content[1]) {
 		return ""
 	}
 	offset := 2
-	content := t.content[offset:]
+	content := s.content[offset:]
 	for _, r := range content {
 		if r == ' ' {
 			break
@@ -230,28 +291,28 @@ func (t *text) EatKeyword() string {
 		}					
 		offset++
 	}
-	t.column += offset
-	result := t.content[:offset]
-	t.content = t.content[offset:]
+	s.column += offset
+	result := s.content[:offset]
+	s.content = s.content[offset:]
 	return string(result)
 }
 
-func (t *text) EatInteger() string {
-	var digits []rune = t.integer.Scan(t.content)
+func (s *script) EatInteger() string {
+	var digits []rune = s.integer.Scan(s.content)
 	if len(digits) == 0 {
 		return ""
 	}
-	t.content = t.content[len(digits):]
-	t.column+= len(digits)
+	s.content = s.content[len(digits):]
+	s.column+= len(digits)
 	return string(digits)
 }
 
-func (t *text) EatFloat() string {
-	var digits []rune = t.float.Scan(t.content)
+func (s *script) EatFloat() string {
+	var digits []rune = s.float.Scan(s.content)
 	if len(digits) == 0 {
 		return ""
 	}
-	t.content = t.content[len(digits):]
-	t.column+= len(digits)
+	s.content = s.content[len(digits):]
+	s.column+= len(digits)
 	return string(digits)
 }
