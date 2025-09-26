@@ -12,16 +12,33 @@ type Text interface {
 	Length() int
 	Empty() bool
 	Remain() string
+
 	BeginWith(string) bool
 	Eat(string) bool
-	//EatSymbol(string) bool
 	EatFunctionName(string) bool
 	EatSpaces()
 	EatString() (string, bool)
+	
 	EatWord() string
+	EatPrefixedWord(prefix string) string
+	// EatSuffixedWord(suffix) (string, string)
+	// EatAffixedWord(prefix, suffix) (string, string)
 	EatWords() (string, string)
 	IsWord(string) bool
+	
+	EatSymbol() string
+	EatPrefixedSymbol(prefix string) string
+	EatSymbols() (string, string)
+	IsSymbol(string) bool
+
 	EatKeyword() string
+	//EatKey() string
+	//IsKeyword(string) bool
+	
+	//EatKeysymbol(string) bool
+	//IsKeysymbol(string) bool
 	EatInteger() string
 	EatFloat() string
 }
+
+

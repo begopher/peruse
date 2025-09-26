@@ -38,10 +38,10 @@ func TestLength(t *testing.T) {
 func TestPath(t *testing.T) {
 	table := []string {
 		"main.twq",
-		"student.twq",
-		"teacher.twq",
-		"any.twq",
-	}
+			"student.twq",
+			"teacher.twq",
+			"any.twq",
+		}
 
 	for _, path := range table {
 		text := peruse.Script(path, "any")
@@ -203,7 +203,7 @@ func TestEatSpaces(t *testing.T) {
 	}
 }
 
-func TestWord(t *testing.T) {
+func TestEatWord(t *testing.T) {
 	table := []struct {
 		content string
 		expected string
@@ -246,9 +246,83 @@ func TestWord(t *testing.T) {
 	}
 }
 
+func TestIsWord(t *testing.T) {
+	table := []struct {
+		content string
+		answer bool
+	}{
+		{content: "a", answer: true},
+		{content: "A", answer: true},
+		{content: "abc", answer: true},
+		{content: "ABC", answer: true},
+		{content: "a1", answer: true},
+		{content: "B1", answer: true},
+		{content: "A1b2C3d4", answer: true},
+		{content: "0", answer: false},
+		{content: "1", answer: false},
+		{content: "3456789", answer: false},
+		{content: "4A", answer: false},
+		{content: "A-", answer: false},
+		{content: "A-A", answer: false},
+		{content: "A-3", answer: false},
+		
+	}
+	for _, data := range table {
+		buffer := peruse.Script("", data.content)
+		if got, expected := buffer.IsWord(data.content), data.answer; got != expected {
+			t.Errorf(`IsWord("%v") returns (%v) expected (%v)`, data.content, got, expected)
+		}		
+	}
+}
 
+func TestEatPrefixedWord(t *testing.T) {
+	table := []struct {
+		content string
+		prefix  string
+		expected string
+		remain string
+		col int
+		line int 
+	}{
+		{content: "a", prefix: "", expected: "a", remain:"", col: 2, line: 1},
+		{content: "A", prefix: "", expected: "A", remain:"", col: 2, line: 1},
+		{content: "1234", prefix: ":", expected: "", remain:"1234", col: 1, line: 1},
+		{content: ":1234", prefix: "@", expected: "", remain:":1234", col: 1, line: 1},
+		{content: ":A)",  prefix: ":",  expected: ":A", remain:")", col: 3, line: 1},
+		{content: `:A
+`,  prefix: ":",  expected: ":A", remain:"\n", col: 3, line: 1},
+		{content: "#A",  prefix: "#",  expected: "#A", remain:"", col: 3, line: 1},
+		{content: "@name",  prefix: "@",  expected: "@name", remain:"", col: 6, line: 1},
+		{content: "$any word", prefix: "$", expected: "$any", remain:" word", col: 5, line: 1},
+		{content: "__why lisp", prefix: "__", expected: "__why", remain:" lisp", col: 6, line: 1},
+		{content: "__why-lisp", prefix: "__", expected: "", remain:"__why-lisp", col: 1, line: 1},
+		{content: "#:why lisp", prefix: "#:", expected: "#:why", remain:" lisp", col: 6, line: 1},
+		
+	}
+	for _, data := range table {
+		buffer := peruse.Script("any", data.content)
+		got := buffer.EatPrefixedWord(data.prefix)
+		expected := data.expected		
+		if got != expected {
+			t.Errorf("Buffer does not eat prefixed word correctly, got(%s) expected (%s)", got, expected)
+		}
+		expected = data.remain
+		got = buffer.Remain()
+		if got != expected {
+			t.Errorf("Buffer does not eat prefixed word correctly, remain: got(%s) expected (%s)", got, expected)
+		}
 
-func TestWords(t *testing.T) {
+		if expected, got := data.col, buffer.Column(); expected != got {
+			t.Errorf("Buffer does not eat prefixed word correctly, column: got(%d) expected (%d)", got, expected)
+		}
+		if expected, got := data.line, buffer.Line(); expected != got {
+			t.Errorf("Buffer does not eat prefixed word correctly, line: got(%d) expected (%d)", got, expected)
+		}
+	}
+
+}
+
+func TestEatWords(t *testing.T) {
 	table := []struct {
 		content string
 		first   string
@@ -257,15 +331,16 @@ func TestWords(t *testing.T) {
 		col int
 		line int 
 	}{
-		//{content: "", first: "", second: "", remain: "", col:1, line:1},
-		//{content: "A", first: "", second: "", remain: "A", col:1, line:1},		
-		{content: "A1:B-2", first: "A1", second: "B-2", remain: "", col:7, line:1},
-		{content: "A1:B-2 ", first: "A1", second: "B-2", remain: " ", col:7, line:1},
+		{content: "", first: "", second: "", remain: "", col:1, line:1},
+		{content: "A", first: "", second: "", remain: "A", col:1, line:1},		
+		{content: "A-1:B2", first: "", second: "", remain: "A-1:B2", col:1, line:1},
+		{content: "A1:B-2", first: "", second: "", remain: "A1:B-2", col:1, line:1},
+		{content: "A1:B2 ", first: "A1", second: "B2", remain: " ", col:6, line:1},
 		{content: "A1:B2)", first: "A1", second: "B2", remain: ")", col:6, line:1},
 		{content: `A1:B2
 `, first: "A1", second: "B2", remain: "\n", col:6, line:1},
 		
-		{content: "lisp-first:lisp-last", first: "lisp-first", second: "lisp-last", remain: "", col:21, line:1},
+		{content: "lispFirst:lispLast", first: "lispFirst", second: "lispLast", remain: "", col:19, line:1},		
 	}
 	
 	for _, data := range table {
@@ -288,6 +363,203 @@ func TestWords(t *testing.T) {
 		}
 		if expected, got := data.line, buffer.Line(); expected != got {
 			t.Errorf("Buffer does not eat word correctly, line: got(%d) expected (%d)", got, expected)
+		}
+	}
+}
+
+
+func TestEatPrefixedSymbol(t *testing.T) {
+	table := []struct {
+		content string
+		prefix  string
+		expected string
+		remain string
+		col int
+		line int 
+	}{
+
+		{content: "", prefix: "", expected: "", remain:"", col: 1, line: 1},
+		{content: "a", prefix: "", expected: "a", remain:"", col: 2, line: 1},
+		{content: "A", prefix: "", expected: "A", remain:"", col: 2, line: 1},
+		{content: "a-a", prefix: "", expected: "a-a", remain:"", col: 4, line: 1},
+		{content: "1a-a", prefix: "", expected: "", remain:"1a-a", col: 1, line: 1},
+		{content: "a0-1a2", prefix: "", expected: "a0-1a2", remain:"", col: 7, line: 1},
+
+		{content: ":A",  prefix: ":",  expected: ":A", remain:"", col: 3, line: 1},
+		{content: "#A",  prefix: "#",  expected: "#A", remain:"", col: 3, line: 1},
+		{content: "@A",  prefix: "@",  expected: "@A", remain:"", col: 3, line: 1},
+		
+		{content: ":1a", prefix: ":", expected: "", remain:":1a", col: 1, line: 1},
+		{content: ":a1", prefix: ":", expected: ":a1", remain:"", col: 4, line: 1},
+		{content: ":a1 any", prefix: ":", expected: ":a1", remain:" any", col: 4, line: 1},
+		{content: ":a1- any", prefix: ":", expected: "", remain:":a1- any", col: 1, line: 1},
+		{content: ":a1-any", prefix: ":", expected: ":a1-any", remain:"", col: 8, line: 1},
+		{content: ":a1-any lisp", prefix: ":", expected: ":a1-any", remain:" lisp", col: 8, line: 1},
+		{content: ":a1-2any3 lisp", prefix: ":", expected: ":a1-2any3", remain:" lisp", col: 10, line: 1},
+		
+		{content: "__why-lisp", prefix: "__", expected: "__why-lisp", remain:"", col: 11, line: 1},
+		{content: "__why-lisp25", prefix: "__", expected: "__why-lisp25", remain:"", col: 13, line: 1},
+		{content: "#:why-lisp )", prefix: "#:", expected: "#:why-lisp", remain:" )", col: 11, line: 1},
+
+		
+
+		{content: "1234", prefix: ":", expected: "", remain:"1234", col: 1, line: 1},		
+		{content: ":1234", prefix: "@", expected: "", remain:":1234", col: 1, line: 1},
+		{content: ":A)",  prefix: ":",  expected: ":A", remain:")", col: 3, line: 1},
+		{content: ":A-B)",  prefix: ":",  expected: ":A-B", remain:")", col: 5, line: 1},
+		{content: `:A
+`,  prefix: ":",  expected: ":A", remain:"\n", col: 3, line: 1},
+		{content: `:A-B
+`,  prefix: ":",  expected: ":A-B", remain:"\n", col: 5, line: 1},
+		
+	}
+	for _, data := range table {
+		buffer := peruse.Script("any", data.content)
+		got := buffer.EatPrefixedSymbol(data.prefix)
+		expected := data.expected		
+		if got != expected {
+			t.Errorf("Buffer does not eat prefixed symbol correctly, got(%s) expected (%s)", got, expected)
+		}
+		expected = data.remain
+		got = buffer.Remain()
+		if got != expected {
+			t.Errorf("Buffer does not eat prefixed symbol correctly, remain: got(%s) expected (%s)", got, expected)
+		}
+
+		if expected, got := data.col, buffer.Column(); expected != got {
+			t.Errorf("Buffer does not eat prefixed symbol correctly, column: got(%d) expected (%d)", got, expected)
+		}
+		if expected, got := data.line, buffer.Line(); expected != got {
+			t.Errorf("Buffer does not eat prefixed symbol correctly, line: got(%d) expected (%d)", got, expected)
+		}
+	}
+
+}
+
+func TestEatSymbol(t *testing.T) {
+	table := []struct {
+		content string
+		expected string
+		remain string
+		col int
+		line int 
+	}{
+		{"A", "A", "", 2, 1},
+		{"Any more1", "Any", " more1", 4, 1},
+		{"AnyAny more1", "AnyAny", " more1", 7, 1},
+		{"A-ny more1", "A-ny", " more1", 5, 1},
+		{"A-ny- more1", "", "A-ny- more1", 1, 1},
+		{"A_ny more1", "", "A_ny more1", 1, 1},
+		{"any1 more3", "any1", " more3", 5, 1},
+		{"any-1 more3", "any-1", " more3", 6, 1},
+		{"1any", "", "1any", 1, 1},
+		{" Any more5", "", " Any more5", 1, 1},
+		{":any", "", ":any", 1, 1},
+		{"_any", "", "_any", 1, 1},
+		{"111234", "", "111234", 1 ,1},
+	}
+	for _, data := range table {
+		buffer := peruse.Script("", data.content)
+		got := buffer.EatSymbol()
+		expected := data.expected		
+		if got != expected {
+			t.Errorf("Buffer does not eat symbol correctly, got(%s) expected (%s)", got, expected)
+		}
+		expected = data.remain
+		got = buffer.Remain()
+		if got != expected {
+			t.Errorf("Buffer does not eat symbol correctly, remain: got(%s) expected (%s)", got, expected)
+		}
+
+		if expected, got := data.col, buffer.Column(); expected != got {
+			t.Errorf("Buffer does not eat symbol correctly, column: got(%d) expected (%d)", got, expected)
+		}
+		if expected, got := data.line, buffer.Line(); expected != got {
+			t.Errorf("Buffer does not eat symbol correctly, line: got(%d) expected (%d)", got, expected)
+		}
+	}
+}
+
+func TestIsSymbol(t *testing.T) {
+	table := []struct {
+		content string
+		answer bool
+	}{
+		{content: "a", answer: true},
+		{content: "A", answer: true},
+		{content: "abc", answer: true},
+		{content: "ABC", answer: true},
+		{content: "a1", answer: true},
+		{content: "B1", answer: true},
+		{content: "A1b2C3d4", answer: true},
+		{content: "0", answer: false},
+		{content: "1", answer: false},
+		{content: "3456789", answer: false},
+		{content: "4A", answer: false},
+		{content: "A-", answer: false},
+		//
+		{content: "A-A", answer: true},
+		{content: "A-A-", answer: false},
+		{content: "A-A-1234", answer: true},
+		{content: "A-4", answer: true},
+		
+	}
+	for _, data := range table {
+		buffer := peruse.Script("", data.content)
+		if got, expected := buffer.IsSymbol(data.content), data.answer; got != expected {
+			t.Errorf(`IsSymbol("%v") returns (%v) expected (%v)`, data.content, got, expected)
+		}		
+	}
+}
+
+func TestEatSymbols(t *testing.T) {
+	table := []struct {
+		content string
+		first   string
+		second  string
+		remain   string
+		col int
+		line int 
+	}{
+		{content: "", first: "", second: "", remain: "", col:1, line:1},
+		{content: "A", first: "", second: "", remain: "A", col:1, line:1},		
+		{content: "A1:B-2", first: "A1", second: "B-2", remain: "", col:7, line:1},
+		{content: "A1:B-2 ", first: "A1", second: "B-2", remain: " ", col:7, line:1},
+		{content: "A1:B2)", first: "A1", second: "B2", remain: ")", col:6, line:1},
+		{content: `A1:B2
+`, first: "A1", second: "B2", remain: "\n", col:6, line:1},
+		
+		{content: "lisp-first:lisp-last", first: "lisp-first", second: "lisp-last", remain: "", col:21, line:1},
+		{
+			content: "lisp0-1first3:lisp4-5last6",
+			first:   "lisp0-1first3",
+			second:  "lisp4-5last6",
+			remain:  "",
+			col:     27,
+			line:    1,
+		},
+	}
+	
+	for _, data := range table {
+		buffer := peruse.Script("", data.content)
+		first, second := buffer.EatSymbols()
+		if first != data.first {
+			t.Errorf("Buffer does not eat symbols correctly, expected first is (%s) got (%s)", data.first, first)
+		}
+		if second != data.second {
+			t.Errorf("Buffer does not eat symbols correctly, expected second is (%s) got (%s)", data.second, second)
+		}
+		expected := data.remain
+		got := buffer.Remain()
+		if got != expected {
+			t.Errorf("Buffer does not eat symbols correctly, remain: got(%s) expected (%s)", got, expected)
+		}
+
+		if expected, got := data.col, buffer.Column(); expected != got {
+			t.Errorf("Buffer does not eat symbol correctly, column: got(%d) expected (%d)", got, expected)
+		}
+		if expected, got := data.line, buffer.Line(); expected != got {
+			t.Errorf("Buffer does not eat symbol correctly, line: got(%d) expected (%d)", got, expected)
 		}
 	}
 }

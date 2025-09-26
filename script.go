@@ -210,7 +210,151 @@ func (s *script) EatWord() string {
 	return string(result)
 }
 
+func (s *script) EatPrefixedWord(prefix string) string {
+	if len(prefix) == 0 {
+		return s.EatWord()
+	}
+	if len(s.content) <= len(prefix) { 
+		return ""
+	}
+	if string(s.content[:len(prefix)]) != prefix {
+		return ""
+	}
+	content := s.content[len(prefix):]
+	if !unicode.IsLetter(content[0]) {
+		return ""
+	}
+	offset := len(prefix) // +1 maybe ?
+	for _, r := range content {
+		if r == ' ' || r == ')' || r =='\n' {
+			break
+		}
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return ""
+		}					
+		offset++
+	}
+	result := s.content[:offset]
+	s.column += offset	
+	s.content = s.content[offset:]
+	return string(result)
+}
+
 func (s *script) EatWords() (string, string) {
+	if len(s.content) == 0 {
+		return "", ""
+	}
+	if !unicode.IsLetter(s.content[0]) {
+		return "", ""
+	}
+	offset := 0
+	colons := 0
+	for _, r := range s.content {
+		if r == ' ' || r == ')' || r =='\n' {
+			break
+		}
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != ':' {
+			return "", ""
+		}
+		if r == ':' {
+			colons++
+		}	
+		offset++
+	}
+	result := s.content[:offset]
+	words := strings.Split(string(result), ":")
+	if len(words) != 2 {
+		return "", ""
+	}
+	first  := words[0]
+	second := words[1]
+	if !s.IsWord(first) || !s.IsWord(second) {
+		//if len(letters) == 0 || unicode.IsDigit(letters[0]) {
+		return "", ""
+	}
+	s.column += offset
+	s.content = s.content[offset:]
+	return words[0], words[1]
+}
+
+func (s *script) IsWord(value string) bool {
+	runes := []rune(value)
+	if len(runes) == 0 {
+		return false
+	}
+	if !unicode.IsLetter(runes[0]) {
+		return false
+	}	
+	for _,  r := range runes {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+			return false
+		}
+	}	
+	return true	
+}
+
+func (s *script) EatSymbol() string {
+	if len(s.content) == 0 {
+		return ""
+	}
+	if !unicode.IsLetter(s.content[0]) {
+		return ""
+	}
+	offset := 0
+	for _, r := range s.content {
+		if r == ' ' || r == ')' || r =='\n' {
+			break
+		}
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
+			return ""
+		}					
+		offset++
+	}
+	result := s.content[:offset]
+	last := result[len(result)-1]
+	if  last == '-' {
+		return ""
+	}
+	s.column += offset
+	s.content = s.content[offset:]
+	return string(result)
+}
+
+func (s *script) EatPrefixedSymbol(prefix string) string {
+	if len(prefix) == 0 {
+		return s.EatSymbol()
+	}
+	if len(s.content) <= len(prefix) { 
+		return ""
+	}
+	if string(s.content[:len(prefix)]) != prefix {
+		return ""
+	}
+	content := s.content[len(prefix):]	
+	if !unicode.IsLetter(content[0]) {
+		return ""
+	}
+	offset := len(prefix) 
+	for _, r := range content {
+		if r == ' ' || r == ')' || r =='\n' {
+			break
+		}
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
+			return ""
+		}					
+		offset++
+	}
+	result := s.content[:offset]
+	last := result[len(result)-1]
+	if  last == '-' {
+		return ""
+	}
+	s.column += offset
+	s.content = s.content[offset:]
+	return string(result)	
+}
+
+func (s *script) EatSymbols() (string, string) {
 	if len(s.content) == 0 {
 		return "", ""
 	}
@@ -241,7 +385,7 @@ func (s *script) EatWords() (string, string) {
 	}
 	first  := words[0]
 	second := words[1]
-	if !s.IsWord(first) || !s.IsWord(second) {
+	if !s.IsSymbol(first) || !s.IsSymbol(second) {
 		//if len(letters) == 0 || unicode.IsDigit(letters[0]) {
 		return "", ""
 	}
@@ -250,19 +394,19 @@ func (s *script) EatWords() (string, string) {
 	return words[0], words[1]
 }
 
-func (s *script) IsWord(value string) bool {
+func (s *script) IsSymbol(value string) bool {
 	runes := []rune(value)
 	if len(runes) == 0 {
 		return false
-	}	
-	for _,  r := range runes {
-		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
-			return false
-		}
 	}
 	if !unicode.IsLetter(runes[0]) {
 		return false
 	}
+	for _,  r := range runes {
+		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
+			return false
+		}
+	}	
 	last := runes[len(runes)-1]
 	if  last == '-' {
 		return false
