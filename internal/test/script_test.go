@@ -279,35 +279,39 @@ func TestEatPrefixedWord(t *testing.T) {
 	table := []struct {
 		content string
 		prefix  string
-		expected string
+		word string
+		prefixedWord string
 		remain string
 		col int
 		line int 
 	}{
-		{content: "a", prefix: "", expected: "a", remain:"", col: 2, line: 1},
-		{content: "A", prefix: "", expected: "A", remain:"", col: 2, line: 1},
-		{content: "1234", prefix: ":", expected: "", remain:"1234", col: 1, line: 1},
-		{content: ":1234", prefix: "@", expected: "", remain:":1234", col: 1, line: 1},
-		{content: ":A)",  prefix: ":",  expected: ":A", remain:")", col: 3, line: 1},
+		{content: "a", prefix: "", word: "a", prefixedWord: "a", remain:"", col: 2, line: 1},
+		{content: "A", prefix: "", word: "A", prefixedWord: "A", remain:"", col: 2, line: 1},
+		{content: "1234", prefix: ":", word: "", prefixedWord: "", remain:"1234", col: 1, line: 1},
+		{content: ":1234", prefix: "@", word: "", prefixedWord: "", remain:":1234", col: 1, line: 1},
+		{content: ":A)",  prefix: ":",  word: "A", prefixedWord: ":A", remain:")", col: 3, line: 1},
 		{content: `:A
-`,  prefix: ":",  expected: ":A", remain:"\n", col: 3, line: 1},
-		{content: "#A",  prefix: "#",  expected: "#A", remain:"", col: 3, line: 1},
-		{content: "@name",  prefix: "@",  expected: "@name", remain:"", col: 6, line: 1},
-		{content: "$any word", prefix: "$", expected: "$any", remain:" word", col: 5, line: 1},
-		{content: "__why lisp", prefix: "__", expected: "__why", remain:" lisp", col: 6, line: 1},
-		{content: "__why-lisp", prefix: "__", expected: "", remain:"__why-lisp", col: 1, line: 1},
-		{content: "#:why lisp", prefix: "#:", expected: "#:why", remain:" lisp", col: 6, line: 1},
+`,  prefix: ":",  word: "A", prefixedWord: ":A", remain:"\n", col: 3, line: 1},
+		{content: "#A",  prefix: "#",  word: "A", prefixedWord: "#A", remain:"", col: 3, line: 1},
+		{content: "@name",  prefix: "@",  word: "name", prefixedWord: "@name", remain:"", col: 6, line: 1},
+		{content: "$any word", prefix: "$", word: "any", prefixedWord: "$any", remain:" word", col: 5, line: 1},
+		{content: "__why lisp", prefix: "__", word: "why", prefixedWord: "__why", remain:" lisp", col: 6, line: 1},
+		{content: "__why-lisp", prefix: "__", word: "", prefixedWord: "", remain:"__why-lisp", col: 1, line: 1},
+		{content: "#:why lisp", prefix: "#:", word: "why", prefixedWord: "#:why", remain:" lisp", col: 6, line: 1},
 		
 	}
 	for _, data := range table {
 		buffer := peruse.Script("any", data.content)
-		got := buffer.EatPrefixedWord(data.prefix)
-		expected := data.expected		
-		if got != expected {
-			t.Errorf("Buffer does not eat prefixed word correctly, got(%s) expected (%s)", got, expected)
+		word, prefixedWord := buffer.EatPrefixedWord(data.prefix)
+		expected := data.word
+		if got, expected := word, data.word;  got != expected {
+			t.Errorf("EatPrefixedWord(%v), expected word is (%s) got (%s)", data.content, expected, got)
+		}
+		if got, expected := prefixedWord, data.prefixedWord;  got != expected {
+			t.Errorf("EatPrefixedWord(%v), expected prefixedWord is (%s) got (%s)", data.content, expected, got)
 		}
 		expected = data.remain
-		got = buffer.Remain()
+		got := buffer.Remain()
 		if got != expected {
 			t.Errorf("Buffer does not eat prefixed word correctly, remain: got(%s) expected (%s)", got, expected)
 		}
@@ -372,56 +376,59 @@ func TestEatPrefixedSymbol(t *testing.T) {
 	table := []struct {
 		content string
 		prefix  string
-		expected string
+		symbol string
+		prefixedSymbol string
 		remain string
 		col int
 		line int 
 	}{
 
-		{content: "", prefix: "", expected: "", remain:"", col: 1, line: 1},
-		{content: "a", prefix: "", expected: "a", remain:"", col: 2, line: 1},
-		{content: "A", prefix: "", expected: "A", remain:"", col: 2, line: 1},
-		{content: "a-a", prefix: "", expected: "a-a", remain:"", col: 4, line: 1},
-		{content: "1a-a", prefix: "", expected: "", remain:"1a-a", col: 1, line: 1},
-		{content: "a0-1a2", prefix: "", expected: "a0-1a2", remain:"", col: 7, line: 1},
+		{content: "", prefix: "", symbol: "", prefixedSymbol: "", remain:"", col: 1, line: 1},
+		{content: "a", prefix: "", symbol: "a", prefixedSymbol: "a", remain:"", col: 2, line: 1},
+		{content: "A", prefix: "", symbol: "A", prefixedSymbol: "A", remain:"", col: 2, line: 1},
+		{content: "a-a", prefix: "", symbol: "a-a", prefixedSymbol: "a-a", remain:"", col: 4, line: 1},
+		{content: "1a-a", prefix: "", symbol: "", prefixedSymbol: "", remain:"1a-a", col: 1, line: 1},
+		{content: "a0-1a2", prefix: "", symbol: "a0-1a2", prefixedSymbol: "a0-1a2", remain:"", col: 7, line: 1},
 
-		{content: ":A",  prefix: ":",  expected: ":A", remain:"", col: 3, line: 1},
-		{content: "#A",  prefix: "#",  expected: "#A", remain:"", col: 3, line: 1},
-		{content: "@A",  prefix: "@",  expected: "@A", remain:"", col: 3, line: 1},
+		{content: ":A",  prefix: ":",  symbol: "A", prefixedSymbol: ":A", remain:"", col: 3, line: 1},
+		{content: "#A",  prefix: "#",  symbol: "A", prefixedSymbol: "#A", remain:"", col: 3, line: 1},
+		{content: "@A",  prefix: "@",  symbol: "A", prefixedSymbol: "@A", remain:"", col: 3, line: 1},
 		
-		{content: ":1a", prefix: ":", expected: "", remain:":1a", col: 1, line: 1},
-		{content: ":a1", prefix: ":", expected: ":a1", remain:"", col: 4, line: 1},
-		{content: ":a1 any", prefix: ":", expected: ":a1", remain:" any", col: 4, line: 1},
-		{content: ":a1- any", prefix: ":", expected: "", remain:":a1- any", col: 1, line: 1},
-		{content: ":a1-any", prefix: ":", expected: ":a1-any", remain:"", col: 8, line: 1},
-		{content: ":a1-any lisp", prefix: ":", expected: ":a1-any", remain:" lisp", col: 8, line: 1},
-		{content: ":a1-2any3 lisp", prefix: ":", expected: ":a1-2any3", remain:" lisp", col: 10, line: 1},
+		{content: ":1a", prefix: ":", symbol: "", prefixedSymbol: "", remain:":1a", col: 1, line: 1},
+		{content: ":a1", prefix: ":", symbol: "a1", prefixedSymbol: ":a1", remain:"", col: 4, line: 1},
+		{content: ":a1 any", prefix: ":", symbol: "a1", prefixedSymbol: ":a1", remain:" any", col: 4, line: 1},
+		{content: ":a1- any", prefix: ":", symbol: "",  prefixedSymbol: "", remain:":a1- any", col: 1, line: 1},
+		{content: ":a1-any", prefix: ":", symbol: "a1-any",  prefixedSymbol: ":a1-any", remain:"", col: 8, line: 1},
+		{content: ":a1-any lisp", prefix: ":", symbol: "a1-any", prefixedSymbol: ":a1-any", remain:" lisp", col: 8, line: 1},
+		{content: ":a1-2any3 lisp", prefix: ":", symbol: "a1-2any3", prefixedSymbol: ":a1-2any3", remain:" lisp", col: 10, line: 1},
 		
-		{content: "__why-lisp", prefix: "__", expected: "__why-lisp", remain:"", col: 11, line: 1},
-		{content: "__why-lisp25", prefix: "__", expected: "__why-lisp25", remain:"", col: 13, line: 1},
-		{content: "#:why-lisp )", prefix: "#:", expected: "#:why-lisp", remain:" )", col: 11, line: 1},
+		{content: "__why-lisp", prefix: "__", symbol: "why-lisp", prefixedSymbol: "__why-lisp", remain:"", col: 11, line: 1},
+		{content: "__why-lisp25", prefix: "__", symbol: "why-lisp25", prefixedSymbol: "__why-lisp25", remain:"", col: 13, line: 1},
+		{content: "#:why-lisp )", prefix: "#:", symbol: "why-lisp", prefixedSymbol: "#:why-lisp", remain:" )", col: 11, line: 1},
 
 		
 
-		{content: "1234", prefix: ":", expected: "", remain:"1234", col: 1, line: 1},		
-		{content: ":1234", prefix: "@", expected: "", remain:":1234", col: 1, line: 1},
-		{content: ":A)",  prefix: ":",  expected: ":A", remain:")", col: 3, line: 1},
-		{content: ":A-B)",  prefix: ":",  expected: ":A-B", remain:")", col: 5, line: 1},
+		{content: "1234", prefix: ":", symbol: "", prefixedSymbol: "", remain:"1234", col: 1, line: 1},		
+		{content: ":1234", prefix: "@", symbol: "", prefixedSymbol: "", remain:":1234", col: 1, line: 1},
+		{content: ":A)",  prefix: ":",  symbol: "A", prefixedSymbol: ":A", remain:")", col: 3, line: 1},
+		{content: ":A-B)",  prefix: ":",  symbol: "A-B", prefixedSymbol: ":A-B", remain:")", col: 5, line: 1},
 		{content: `:A
-`,  prefix: ":",  expected: ":A", remain:"\n", col: 3, line: 1},
+`,  prefix: ":",  symbol: "A", prefixedSymbol: ":A", remain:"\n", col: 3, line: 1},
 		{content: `:A-B
-`,  prefix: ":",  expected: ":A-B", remain:"\n", col: 5, line: 1},
+`,  prefix: ":", symbol: "A-B",  prefixedSymbol: ":A-B", remain:"\n", col: 5, line: 1},
 		
 	}
 	for _, data := range table {
 		buffer := peruse.Script("any", data.content)
-		got := buffer.EatPrefixedSymbol(data.prefix)
-		expected := data.expected		
-		if got != expected {
-			t.Errorf("Buffer does not eat prefixed symbol correctly, got(%s) expected (%s)", got, expected)
+		symbol, prefixedSymbol := buffer.EatPrefixedSymbol(data.prefix)
+		if got, expected := symbol, data.symbol; got != expected {
+			t.Errorf("EatPrefixedSymbol(%v) returned symbol is (%s) expected (%s)", data.content, got, expected)
 		}
-		expected = data.remain
-		got = buffer.Remain()
+		if got, expected := prefixedSymbol, data.prefixedSymbol; got != expected {
+			t.Errorf("EatPrefixedSymbol(%v) returned prefixedSymbol is (%s) expected (%s)", data.content, got, expected)
+		}
+		expected := data.remain
+		got := buffer.Remain()
 		if got != expected {
 			t.Errorf("Buffer does not eat prefixed symbol correctly, remain: got(%s) expected (%s)", got, expected)
 		}

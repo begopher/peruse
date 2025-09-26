@@ -20,14 +20,14 @@ type Text interface {
 	EatString() (string, bool)
 	
 	EatWord() string
-	EatPrefixedWord(prefix string) string
+	EatPrefixedWord(prefix string) (word, prefixed_word string)
 	// EatSuffixedWord(suffix) (string, string)
 	// EatAffixedWord(prefix, suffix) (string, string)
 	EatWords() (string, string)
 	IsWord(string) bool
 	
 	EatSymbol() string
-	EatPrefixedSymbol(prefix string) string
+	EatPrefixedSymbol(prefix string) (symbol, prefixed_symbol string)
 	EatSymbols() (string, string)
 	IsSymbol(string) bool
 

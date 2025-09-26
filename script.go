@@ -210,19 +210,20 @@ func (s *script) EatWord() string {
 	return string(result)
 }
 
-func (s *script) EatPrefixedWord(prefix string) string {
+func (s *script) EatPrefixedWord(prefix string) (string, string) {
 	if len(prefix) == 0 {
-		return s.EatWord()
+		result := s.EatWord()
+		return result, result
 	}
 	if len(s.content) <= len(prefix) { 
-		return ""
+		return "", ""
 	}
 	if string(s.content[:len(prefix)]) != prefix {
-		return ""
+		return "", ""
 	}
 	content := s.content[len(prefix):]
 	if !unicode.IsLetter(content[0]) {
-		return ""
+		return "", ""
 	}
 	offset := len(prefix) // +1 maybe ?
 	for _, r := range content {
@@ -230,14 +231,14 @@ func (s *script) EatPrefixedWord(prefix string) string {
 			break
 		}
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
-			return ""
+			return "", ""
 		}					
 		offset++
 	}
 	result := s.content[:offset]
 	s.column += offset	
 	s.content = s.content[offset:]
-	return string(result)
+	return string(result[len(prefix):]), string(result)
 }
 
 func (s *script) EatWords() (string, string) {
@@ -320,19 +321,20 @@ func (s *script) EatSymbol() string {
 	return string(result)
 }
 
-func (s *script) EatPrefixedSymbol(prefix string) string {
+func (s *script) EatPrefixedSymbol(prefix string) (string, string) {
 	if len(prefix) == 0 {
-		return s.EatSymbol()
+		result := s.EatSymbol()
+		return result, result
 	}
 	if len(s.content) <= len(prefix) { 
-		return ""
+		return "", ""
 	}
 	if string(s.content[:len(prefix)]) != prefix {
-		return ""
+		return "", ""
 	}
 	content := s.content[len(prefix):]	
 	if !unicode.IsLetter(content[0]) {
-		return ""
+		return "", ""
 	}
 	offset := len(prefix) 
 	for _, r := range content {
@@ -340,18 +342,19 @@ func (s *script) EatPrefixedSymbol(prefix string) string {
 			break
 		}
 		if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '-' {
-			return ""
+			return "", ""
 		}					
 		offset++
 	}
 	result := s.content[:offset]
 	last := result[len(result)-1]
 	if  last == '-' {
-		return ""
+		return "", ""
 	}
 	s.column += offset
 	s.content = s.content[offset:]
-	return string(result)	
+	return string(result[len(prefix):]), string(result)
+	//	return string(result)	
 }
 
 func (s *script) EatSymbols() (string, string) {
